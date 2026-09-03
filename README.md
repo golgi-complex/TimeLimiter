@@ -40,7 +40,7 @@
 
 ### Шаг 1. Подготовка зависимостей
 
-Убедитесь, что в рабочей директории проекта созданы файлы `timer.py` и `requirements.txt`. Выполните в терминале команду установки:
+Убедитесь, что в рабочей директории проекта созданы файлы `main.py` и `requirements.txt`. Выполните в терминале команду установки:
 
 ```powershell
 pip install -r requirements.txt
@@ -63,12 +63,12 @@ pyinstaller --noconsole --onefile main.py
 Чтобы программа запускалась автоматически для любой учетной записи при старте Windows, выполните команду копирования `.exe` файла в системную директорию `StartUp`:
 
 ```powershell
-copy-item "dist\timer.exe" "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\timer.exe" -Force
+copy-item "dist\main.exe" "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\main.exe" -Force
 ```
 
 ---
 
-## 6. Настройки в коде (`timer.py`)
+## 6. Настройки в коде (`main.py`)
 
 Вы можете настроить ключевые параметры программы перед сборкой в блоке `# --- НАСТРОЙКИ ---`:
 
