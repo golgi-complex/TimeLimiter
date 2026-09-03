@@ -1,4 +1,4 @@
-# Screen Time Guard (`timer.py`)
+# Screen Time Guard (`main.py`)
 
 Автономная программа родительского контроля экранного времени для ПК под управлением Windows 10/11.
 
