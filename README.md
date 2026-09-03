@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # TimeLimiter (`main.py`)
 =======
 # TimeLimiter
@@ -60,7 +59,6 @@ git clone https://github.com/golgi-complex/TimeLimiter.git
 cd TimeLimiter
 ```
 
-<<<<<<< HEAD
 Убедитесь, что в рабочей директории проекта созданы файлы `main.py` и `requirements.txt`. Выполните в терминале команду установки:
 =======
 Также можно скачать репозиторий в виде ZIP-архива и распаковать его вручную.
@@ -106,7 +104,6 @@ python main.py --settings
 
 Пароль по умолчанию:
 
-<<<<<<< HEAD
 ```powershell
 copy-item "dist\main.exe" "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\main.exe" -Force
 =======
@@ -123,7 +120,6 @@ python main.py --help
 
 ---
 
-<<<<<<< HEAD
 ## 6. Настройки в коде (`main.py`)
 =======
 ## Сборка исполняемого `.exe`
