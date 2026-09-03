@@ -2,3 +2,6 @@
 myenv/
 venv/
 ENV/
+
+# Файлы преобразования в .exe
+main.spec
