@@ -51,10 +51,10 @@ pip install -r requirements.txt
 Скомпилируйте скрипт Python в один автономный бинарный файл без консольного окна:
 
 ```powershell
-pyinstaller --noconsole --onefile timer.py
+pyinstaller --noconsole --onefile main.py
 ```
 
-После завершения процесса скомпилированный файл `timer.exe` будет находиться в папке `dist\`.
+После завершения процесса скомпилированный файл `main.exe` будет находиться в папке `dist\`.
 
 ---
 
