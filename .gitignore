@@ -3,5 +3,8 @@ myenv/
 venv/
 ENV/
 
-# Файлы преобразования в .exe
+# Тестовые файлы
 main.spec
+settings.txt
+usage.txt
+timelimiter.log
