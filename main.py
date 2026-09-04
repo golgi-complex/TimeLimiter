@@ -62,25 +62,96 @@ logger = logging.getLogger(APP_NAME)
 
 
 # --------------------------------------------------
+# Translations
+# --------------------------------------------------
+
+TRANSLATIONS = {
+    "en": {
+        "time_limit_reached": "Time limit reached",
+        "enter_password": (
+            "Enter the parent password to continue."
+        ),
+        "time_remaining": "Time remaining: {time}",
+        "incorrect_password": "Incorrect password.",
+    },
+
+    "ru": {
+        "time_limit_reached": "Время вышло",
+        "enter_password": (
+            "Введите родительский пароль, чтобы продолжить."
+        ),
+        "time_remaining": "Осталось времени: {time}",
+        "incorrect_password": "Неверный пароль.",
+    },
+}
+
+
+def get_translation(language, key, **kwargs):
+
+    if language not in TRANSLATIONS:
+        language = "en"
+
+    text = TRANSLATIONS[language].get(
+        key,
+        key,
+    )
+
+    return text.format(**kwargs)
+
+
+# --------------------------------------------------
+# Time formatting
+# --------------------------------------------------
+
+def format_time(total_seconds):
+
+    total_seconds = max(
+        0,
+        int(total_seconds),
+    )
+
+    hours = total_seconds // 3600
+
+    minutes = (
+        (total_seconds % 3600) // 60
+    )
+
+    seconds = (
+        total_seconds % 60
+    )
+
+    return (
+        f"{hours:02d}:"
+        f"{minutes:02d}:"
+        f"{seconds:02d}"
+    )
+
+
+# --------------------------------------------------
 # Settings
 # --------------------------------------------------
 
 def create_default_settings():
+
     try:
+
         with open(
             SETTINGS_FILE,
             "w",
             encoding="utf-8",
         ) as file:
+
             file.write("limit_minutes=5\n")
             file.write("password=1234\n")
             file.write("timer_enabled=true\n")
+            file.write("language=en\n")
 
         logger.info(
             "Default settings file created."
         )
 
     except Exception:
+
         logger.exception(
             "Failed to create default settings file."
         )
@@ -92,6 +163,7 @@ def load_settings():
         "limit_minutes": 5,
         "password": "1234",
         "timer_enabled": True,
+        "language": "en",
     }
 
     if not SETTINGS_FILE.exists():
@@ -131,6 +203,7 @@ def load_settings():
                 if key == "limit_minutes":
 
                     try:
+
                         settings["limit_minutes"] = int(
                             value
                         )
@@ -152,6 +225,22 @@ def load_settings():
                     settings["timer_enabled"] = (
                         value.lower() == "true"
                     )
+
+                elif key == "language":
+
+                    language = value.lower()
+
+                    if language in TRANSLATIONS:
+
+                        settings["language"] = language
+
+                    else:
+
+                        logger.warning(
+                            "Invalid language value: %s. "
+                            "Using English.",
+                            value,
+                        )
 
     except Exception:
 
@@ -216,6 +305,7 @@ def load_usage():
                 elif key == "used_seconds":
 
                     try:
+
                         usage["used_seconds"] = int(
                             value
                         )
@@ -301,11 +391,14 @@ def main():
 
     settings = load_settings()
 
+    language = settings["language"]
+
     logger.info(
         "Settings loaded: limit=%s minutes, "
-        "timer_enabled=%s",
+        "timer_enabled=%s, language=%s",
         settings["limit_minutes"],
         settings["timer_enabled"],
+        language,
     )
 
     usage = load_usage()
@@ -400,7 +493,7 @@ def main():
         transparent_color,
     )
 
-    window_width = 180
+    window_width = 220
     window_height = 60
 
     screen_width = (
@@ -427,7 +520,7 @@ def main():
 
     timer_label = tk.Label(
         root,
-        text="00:00",
+        text="00:00:00",
         font=(
             "Segoe UI",
             31,
@@ -494,8 +587,6 @@ def main():
 
     def update_timer_color():
 
-        # Если пользователь бездействует,
-        # таймер становится голубым.
         if was_inactive:
 
             color = "#00BFFF"
@@ -588,7 +679,7 @@ def main():
             lambda: None,
         )
 
-        window_width = 360
+        window_width = 420
         window_height = 230
 
         screen_width = (
@@ -613,7 +704,10 @@ def main():
 
         title_label = tk.Label(
             password_window,
-            text="Time limit reached",
+            text=get_translation(
+                language,
+                "time_limit_reached",
+            ),
             font=(
                 "Segoe UI",
                 16,
@@ -627,9 +721,9 @@ def main():
 
         message_label = tk.Label(
             password_window,
-            text=(
-                "Enter the parent password "
-                "to continue."
+            text=get_translation(
+                language,
+                "enter_password",
             ),
             font=(
                 "Segoe UI",
@@ -643,7 +737,11 @@ def main():
 
         timeout_label = tk.Label(
             password_window,
-            text="Time remaining: 01:00",
+            text=get_translation(
+                language,
+                "time_remaining",
+                time="00:01:00",
+            ),
             font=(
                 "Segoe UI",
                 10,
@@ -692,7 +790,11 @@ def main():
             if password_timeout_seconds <= 0:
 
                 timeout_label.config(
-                    text="Time remaining: 00:00"
+                    text=get_translation(
+                        language,
+                        "time_remaining",
+                        time="00:00:00",
+                    )
                 )
 
                 logger.info(
@@ -705,18 +807,15 @@ def main():
 
                 return
 
-            minutes = (
-                password_timeout_seconds // 60
-            )
-
-            seconds = (
-                password_timeout_seconds % 60
+            current_time = format_time(
+                password_timeout_seconds
             )
 
             timeout_label.config(
-                text=(
-                    f"Time remaining: "
-                    f"{minutes:02d}:{seconds:02d}"
+                text=get_translation(
+                    language,
+                    "time_remaining",
+                    time=current_time,
                 )
             )
 
@@ -735,6 +834,7 @@ def main():
             nonlocal password_window
             nonlocal password_timeout_job
             nonlocal seconds_since_save
+            nonlocal was_inactive
 
             entered_password = (
                 password_entry.get()
@@ -803,7 +903,10 @@ def main():
                 )
 
                 error_label.config(
-                    text="Incorrect password."
+                    text=get_translation(
+                        language,
+                        "incorrect_password",
+                    )
                 )
 
                 password_entry.delete(
@@ -915,13 +1018,10 @@ def main():
 
                 was_inactive = True
 
-            # Показываем голубой цвет
-            # во время паузы.
             timer_label.config(
                 fg="#00BFFF"
             )
 
-            # Время НЕ списываем.
             root.after(
                 1000,
                 update_timer,
@@ -949,7 +1049,7 @@ def main():
         if remaining_seconds <= 0:
 
             timer_label.config(
-                text="00:00"
+                text="00:00:00"
             )
 
             save_usage(
@@ -970,17 +1070,9 @@ def main():
 
         update_timer_color()
 
-        minutes = (
-            remaining_seconds // 60
-        )
-
-        seconds = (
-            remaining_seconds % 60
-        )
-
         timer_label.config(
-            text=(
-                f"{minutes:02d}:{seconds:02d}"
+            text=format_time(
+                remaining_seconds
             )
         )
 

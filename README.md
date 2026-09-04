@@ -20,6 +20,7 @@ TimeLimiter отслеживает активное использование �
 * 💾 Сохранение данных об использовании каждые 10 секунд
 * 🎨 Цветовая индикация оставшегося времени
 * 📌 Таймер поверх всех окон
+* 🌐 Поддержка английского и русского языков
 * ⚙️ Простая текстовая конфигурация
 * 📝 Ведение журнала работы приложения
 * 🚀 Поддержка автоматического запуска Windows
@@ -32,6 +33,12 @@ TimeLimiter отслеживает активное использование �
 
 TimeLimiter поддерживает обратный отсчёт, показывающий количество доступного времени работы за компьютером в текущем дне.
 
+Таймер отображается в формате:
+
+```text
+HH:MM:SS
+```
+
 Например, если установлен дневной лимит:
 
 ```text
@@ -41,7 +48,19 @@ TimeLimiter поддерживает обратный отсчёт, показы
 таймер начинается со значения:
 
 ```text
-05:00
+00:05:00
+```
+
+Если установлен лимит:
+
+```text
+90 минут
+```
+
+таймер начинается со значения:
+
+```text
+01:30:00
 ```
 
 При активном использовании компьютера таймер постепенно уменьшается.
@@ -53,21 +72,21 @@ TimeLimiter поддерживает обратный отсчёт, показы
 ### Пример
 
 ```text
-05:00
-04:59
-04:58
+00:05:00
+00:04:59
+00:04:58
 ...
-04:52
+00:04:52
 
 [10 секунд без активности клавиатуры/мыши]
 
-04:52  ← таймер приостановлен
+00:04:52  ← таймер приостановлен
 
 [движение мыши]
 
-04:52
-04:51
-04:50
+00:04:52
+00:04:51
+00:04:50
 ...
 ```
 
@@ -85,7 +104,7 @@ TimeLimiter поддерживает обратный отсчёт, показы
 | 5–15 минут                        | 🟠 Оранжевый        | Времени становится мало |
 | Менее 5 минут                     | 🔴 Красный          | Критический уровень     |
 | Пауза из-за отсутствия активности | 🔵 Синий            | Таймер приостановлен    |
-| `00:00`                           | 🔴 Мигающий красный | Дневной лимит достигнут |
+| `00:00:00`                        | 🔴 Мигающий красный | Дневной лимит достигнут |
 
 Синий цвет при отсутствии активности имеет приоритет над обычной цветовой индикацией времени.
 
@@ -117,6 +136,14 @@ limit_minutes=60
 
 устанавливает дневной лимит в один час.
 
+Таймер при этом будет отображаться как:
+
+```text
+01:00:00
+```
+
+Можно устанавливать лимиты продолжительностью более одного часа.
+
 ---
 
 ## Родительский пароль
@@ -129,9 +156,27 @@ limit_minutes=60
 password=1234
 ```
 
-Когда дневной лимит достигает `00:00`, TimeLimiter отображает окно ввода пароля.
+Когда дневной лимит достигает:
+
+```text
+00:00:00
+```
+
+TimeLimiter отображает окно ввода пароля.
 
 На ввод правильного пароля даётся 60 секунд.
+
+Таймер ожидания также отображается в формате:
+
+```text
+HH:MM:SS
+```
+
+Начальное значение:
+
+```text
+00:01:00
+```
 
 ### Правильный пароль
 
@@ -151,7 +196,7 @@ limit_minutes=30
 после правильного ввода пароля пользователь получает ещё:
 
 ```text
-30 минут
+00:30:00
 ```
 
 доступного времени.
@@ -173,6 +218,67 @@ shutdown /s /t 0
 выполняется автоматически, после чего Windows немедленно выключается.
 
 > **Примечание по безопасности:** в текущей версии родительский пароль хранится в открытом виде в `settings.txt`. Это сделано намеренно для упрощения текущей версии приложения. Такой способ хранения не обеспечивает защиту от технически подготовленного пользователя.
+
+---
+
+## Поддержка языков
+
+TimeLimiter поддерживает два языка интерфейса:
+
+* 🇬🇧 English
+* 🇷🇺 Русский
+
+Язык задаётся в файле:
+
+```text
+settings.txt
+```
+
+Параметр:
+
+```text
+language=en
+```
+
+или:
+
+```text
+language=ru
+```
+
+### Английский интерфейс
+
+```text
+language=en
+```
+
+Пример окна:
+
+```text
+Time limit reached
+
+Enter the parent password to continue.
+
+Time remaining: 00:01:00
+```
+
+### Русский интерфейс
+
+```text
+language=ru
+```
+
+Пример окна:
+
+```text
+Время вышло
+
+Введите родительский пароль, чтобы продолжить.
+
+Осталось времени: 00:01:00
+```
+
+Если параметр `language` отсутствует или содержит неизвестное значение, TimeLimiter использует английский язык по умолчанию.
 
 ---
 
@@ -212,11 +318,12 @@ settings.txt
 limit_minutes=5
 password=1234
 timer_enabled=true
+language=en
 ```
 
 ### `limit_minutes`
 
-Определяет ежедневный лимит времени.
+Определяет ежедневный лимит времени в минутах.
 
 Например:
 
@@ -225,6 +332,12 @@ limit_minutes=60
 ```
 
 означает один час доступного времени в день.
+
+Таймер будет отображаться как:
+
+```text
+01:00:00
+```
 
 ### `password`
 
@@ -253,6 +366,22 @@ timer_enabled=false
 ```
 
 При отключённом отображении таймера отслеживание и подсчёт времени продолжает работать.
+
+### `language`
+
+Определяет язык интерфейса приложения.
+
+Английский:
+
+```text
+language=en
+```
+
+Русский:
+
+```text
+language=ru
+```
 
 ---
 
@@ -402,7 +531,13 @@ INACTIVITY_TIMEOUT = 10
 Пример:
 
 ```text
-          04:37
+          00:04:37
+```
+
+Формат отображения:
+
+```text
+HH:MM:SS
 ```
 
 Окно таймера:
@@ -411,7 +546,7 @@ INACTIVITY_TIMEOUT = 10
 * находится поверх остальных окон;
 * располагается по центру экрана;
 * имеет прозрачный фон;
-* отображает оставшееся время в формате `MM:SS`.
+* отображает оставшееся время в формате `HH:MM:SS`.
 
 Отображение таймера можно отключить через:
 
@@ -660,13 +795,13 @@ limit_minutes=1
 Таймер начнёт отсчёт с:
 
 ```text
-01:00
+00:01:00
 ```
 
 После достижения:
 
 ```text
-00:00
+00:00:00
 ```
 
 должно появиться окно ввода пароля.
@@ -686,12 +821,23 @@ limit_minutes=1
 Например, при лимите 5 минут:
 
 ```text
-05:00
+00:05:00
 ```
 
 ### Тестирование таймера ввода пароля
 
 После появления окна пароля не вводите пароль.
+
+Таймер будет отсчитывать:
+
+```text
+00:01:00
+00:00:59
+00:00:58
+...
+00:00:01
+00:00:00
+```
 
 Через 60 секунд TimeLimiter выполнит:
 
@@ -737,6 +883,17 @@ TimeLimiter учитывает только периоды, когда поль�
 
 Приложение намеренно использует небольшое количество зависимостей и по возможности использует стандартную библиотеку Python.
 
+### Локализация
+
+Текст интерфейса вынесен в отдельную структуру переводов.
+
+Это позволяет добавлять новые языки без изменения основной логики приложения.
+
+В текущей версии поддерживаются:
+
+* English
+* Русский
+
 ---
 
 ## Безопасность
@@ -768,6 +925,7 @@ TimeLimiter предназначен как **простая утилита ро
 * Нет удалённого управления для родителей.
 * Для определения активности используются только клавиатура и мышь.
 * Интервал бездействия в текущей версии задаётся непосредственно в исходном коде.
+* Данные об использовании сохраняются каждые 10 секунд, поэтому при неожиданном завершении приложения возможна небольшая потеря последних секунд.
 * Приложение работает только в Windows.
 
 ---
@@ -793,37 +951,44 @@ TimeLimiter предоставляется «как есть».
 
 # TimeLimiter
 
-**Simple parental control for limiting daily computer usage on Windows 10/11.**
+**A simple parental control utility for limiting daily computer usage on Windows 10/11.**
 
-TimeLimiter tracks active computer usage and limits the amount of time a user can spend at the computer each day. When the daily limit is reached, TimeLimiter requests a parent password to extend the session. If the correct password is not entered within 60 seconds, Windows is automatically shut down.
+TimeLimiter tracks active computer usage and limits the amount of time a user can spend on the computer each day. When the daily limit is reached, TimeLimiter asks for the parent password to continue the session. If the correct password is not entered within 60 seconds, Windows is automatically shut down.
 
-The application runs quietly in the background and can be configured to start automatically with Windows.
+The application runs in the background and can be configured to start automatically with Windows.
 
 ---
 
 ## Features
 
 * ⏱️ Daily computer usage limit
-* 🖱️⌨️ Automatic pause after 10 seconds without keyboard or mouse activity
+* 🖱️⌨️ Automatic pause after 10 seconds of keyboard or mouse inactivity
 * 🔐 Parent password protection
-* ⏳ Password entry timeout
-* 🛑 Automatic Windows shutdown when the timeout expires
-* 🌙 Automatic daily reset at midnight
-* 📊 Persistent usage tracking
+* ⏳ Password entry countdown
+* 🛑 Automatic Windows shutdown after the password timeout
+* 🌙 Automatic daily limit reset at midnight
+* 📊 Usage time tracking
 * 💾 Usage data saved every 10 seconds
-* 🎨 Color-coded remaining-time indicator
+* 🎨 Color-coded remaining time indicator
 * 📌 Always-on-top timer overlay
+* 🌐 English and Russian language support
 * ⚙️ Simple text-based configuration
 * 📝 Application logging
 * 🚀 Windows startup support
 * 📦 Portable `.exe` build
-* 🪟 Supports Windows 10 and Windows 11
+* 🪟 Windows 10 and Windows 11 support
 
 ---
 
 ## How TimeLimiter Works
 
-TimeLimiter maintains a countdown representing the amount of computer usage available for the current day.
+TimeLimiter provides a countdown timer showing the amount of available computer usage time remaining for the current day.
+
+The timer is displayed in the following format:
+
+```text
+HH:MM:SS
+```
 
 For example, if the daily limit is:
 
@@ -834,63 +999,79 @@ For example, if the daily limit is:
 the timer starts at:
 
 ```text
-05:00
+00:05:00
 ```
 
-While the computer is actively being used, the timer counts down.
+If the daily limit is:
 
-If there is no keyboard or mouse activity for 10 seconds, the timer pauses automatically.
+```text
+90 minutes
+```
 
-When activity resumes, the timer continues counting down.
+the timer starts at:
+
+```text
+01:30:00
+```
+
+The timer decreases while the user is actively using the computer.
+
+If there is no keyboard or mouse activity for 10 seconds, the timer is automatically paused.
+
+The countdown resumes as soon as activity is detected again.
 
 ### Example
 
 ```text
-05:00
-04:59
-04:58
+00:05:00
+00:04:59
+00:04:58
 ...
-04:52
+00:04:52
 
 [10 seconds without keyboard/mouse activity]
 
-04:52  ← timer paused
+00:04:52  ← timer paused
 
 [mouse movement]
 
-04:52
-04:51
-04:50
+00:04:52
+00:04:51
+00:04:50
 ...
 ```
 
-Inactive time does not reduce the available daily usage time.
+Inactive time **does not count toward the daily usage limit**.
 
 ---
 
 ## Timer Colors
 
-The timer changes color depending on the remaining time.
+The timer color changes depending on the remaining time.
 
-| Remaining time       | Color           | Meaning                  |
-| -------------------- | --------------- | ------------------------ |
-| More than 15 minutes | 🟢 Green        | Plenty of time remaining |
-| 5–15 minutes         | 🟠 Orange       | Time is running low      |
-| Less than 5 minutes  | 🔴 Red          | Critical                 |
-| Inactivity pause     | 🔵 Blue         | Timer is paused          |
-| `00:00`              | 🔴 Blinking red | Daily limit reached      |
+| Remaining time           | Color           | Meaning                  |
+| ------------------------ | --------------- | ------------------------ |
+| More than 15 minutes     | 🟢 Green        | Plenty of time remaining |
+| 5–15 minutes             | 🟠 Orange       | Time is running low      |
+| Less than 5 minutes      | 🔴 Red          | Critical time remaining  |
+| Paused due to inactivity | 🔵 Blue         | Timer is paused          |
+| `00:00:00`               | 🔴 Blinking red | Daily limit reached      |
 
-The inactivity color has priority over the normal time-based colors.
+The blue inactivity state has priority over the normal time-based colors.
 
-For example, if 3 minutes remain and the user becomes inactive, the timer changes from red to blue.
+For example, if 3 minutes remain and the user stops using the computer, the timer changes from red to blue.
 
 ---
 
-## Daily Limit
+## Daily Time Limit
 
-The daily limit is configured through `settings.txt`.
+The daily limit is configured through:
 
-Default configuration:
+```text
+settings.txt
+```
+
+The default value is:
 
 ```text
 limit_minutes=5
@@ -906,50 +1087,76 @@ limit_minutes=60
 
 sets the daily limit to one hour.
 
+The timer will then display:
+
+```text
+01:00:00
+```
+
+Limits longer than one hour are supported.
+
 ---
 
 ## Parent Password
 
-The parent password is configured in `settings.txt`.
+The parent password is also configured in `settings.txt`.
 
-Default:
+The default password is:
 
 ```text
 password=1234
 ```
 
-When the daily limit reaches `00:00`, TimeLimiter displays a password window.
+When the daily limit reaches:
 
-The user has 60 seconds to enter the correct password.
+```text
+00:00:00
+```
+
+TimeLimiter displays a password entry window.
+
+The parent has 60 seconds to enter the correct password.
+
+The password countdown is also displayed in:
+
+```text
+HH:MM:SS
+```
+
+The initial value is:
+
+```text
+00:01:00
+```
 
 ### Correct Password
 
-If the password is correct:
+If the correct password is entered:
 
 1. The password window closes.
-2. The session is extended by another full daily-limit period.
-3. The usage data is updated.
-4. The timer resumes.
+2. The session is extended by one full daily-limit period.
+3. Usage data is updated.
+4. The timer continues counting down.
 
-For example, with:
+For example, if:
 
 ```text
 limit_minutes=30
 ```
 
-entering the correct password provides another:
+the user receives another:
 
 ```text
-30 minutes
+00:30:00
 ```
 
-of available usage time.
+of available time after entering the correct password.
 
 ### Incorrect Password
 
 An incorrect password does not extend the session.
 
-The user can continue trying while the 60-second timeout is running.
+The user can continue attempting to enter the password until the 60-second countdown expires.
 
 ### Password Timeout
 
@@ -959,15 +1166,78 @@ If the correct password is not entered within 60 seconds:
 shutdown /s /t 0
 ```
 
-is executed and Windows shuts down immediately.
+is executed automatically, and Windows is immediately shut down.
 
-> **Security note:** The current implementation stores the parent password as plain text in `settings.txt`. This is intentional for the current version and should not be considered secure against a technically experienced user.
+> **Security note:** In the current version, the parent password is stored as plain text in `settings.txt`. This is intentional for simplicity in the current version. This storage method does not protect the password from a technically experienced user.
+
+---
+
+## Language Support
+
+TimeLimiter supports two interface languages:
+
+* 🇬🇧 English
+* 🇷🇺 Russian
+
+The language is configured in:
+
+```text
+settings.txt
+```
+
+using the `language` parameter.
+
+English:
+
+```text
+language=en
+```
+
+Russian:
+
+```text
+language=ru
+```
+
+### English Interface
+
+```text
+language=en
+```
+
+Example:
+
+```text
+Time limit reached
+
+Enter the parent password to continue.
+
+Time remaining: 00:01:00
+```
+
+### Russian Interface
+
+```text
+language=ru
+```
+
+Example:
+
+```text
+Время вышло
+
+Введите родительский пароль, чтобы продолжить.
+
+Осталось времени: 00:01:00
+```
+
+If the `language` parameter is missing or contains an unsupported value, TimeLimiter uses English by default.
 
 ---
 
 ## Automatic Daily Reset
 
-Usage is reset automatically at midnight.
+Usage data is automatically reset at the beginning of a new day.
 
 For example:
 
@@ -976,20 +1246,20 @@ date=2026-09-04
 used_seconds=270
 ```
 
-After midnight, TimeLimiter detects the new date and changes the usage to:
+After midnight, TimeLimiter detects the date change and resets the data to:
 
 ```text
 date=2026-09-05
 used_seconds=0
 ```
 
-The configured daily limit is then available again.
+The full daily limit then becomes available again.
 
 ---
 
 ## Configuration
 
-TimeLimiter uses a simple text file:
+TimeLimiter uses a simple text configuration file:
 
 ```text
 settings.txt
@@ -1001,23 +1271,30 @@ Example:
 limit_minutes=5
 password=1234
 timer_enabled=true
+language=en
 ```
 
 ### `limit_minutes`
 
-Controls the daily usage limit.
+Defines the daily usage limit in minutes.
 
-Example:
+For example:
 
 ```text
 limit_minutes=60
 ```
 
-One hour of available usage per day.
+means one hour of available computer usage per day.
+
+The timer will display:
+
+```text
+01:00:00
+```
 
 ### `password`
 
-Parent password used to extend the session.
+The parent password required to extend the session.
 
 Example:
 
@@ -1027,7 +1304,7 @@ password=123456
 
 ### `timer_enabled`
 
-Controls whether the timer overlay is displayed.
+Controls whether the timer is displayed on the screen.
 
 Enable:
 
@@ -1041,15 +1318,31 @@ Disable:
 timer_enabled=false
 ```
 
-When the timer display is disabled, the usage tracking logic still runs.
+When the timer display is disabled, usage tracking continues to work in the background.
+
+### `language`
+
+Defines the application interface language.
+
+English:
+
+```text
+language=en
+```
+
+Russian:
+
+```text
+language=ru
+```
 
 ---
 
 ## Application Files
 
-TimeLimiter stores its files in the **same directory as the running application**.
+TimeLimiter stores its files **in the same directory as the running application**.
 
-When running from Python:
+When running through Python:
 
 ```text
 TimeLimiter/
@@ -1060,7 +1353,7 @@ TimeLimiter/
 └── requirements.txt
 ```
 
-When running the compiled executable:
+When running as a compiled `.exe`:
 
 ```text
 TimeLimiter/
@@ -1070,9 +1363,9 @@ TimeLimiter/
 └── timelimiter.log
 ```
 
-This behavior makes the application portable.
+This approach makes the application portable.
 
-If `TimeLimiter.exe` is moved to another directory, its configuration, usage data, and log file are created next to the new executable.
+If `TimeLimiter.exe` is moved to another directory, the configuration, usage and log files will be created next to the new `.exe` location.
 
 ---
 
@@ -1093,15 +1386,15 @@ used_seconds=127
 
 ### `date`
 
-The date for which the usage data applies.
+The date associated with the usage data.
 
 ### `used_seconds`
 
-The number of seconds counted toward the current day's limit.
+The number of seconds counted as active usage during the current day.
 
-TimeLimiter saves this information every 10 seconds.
+TimeLimiter saves usage data every 10 seconds.
 
-This helps prevent significant loss of usage information if the application or Windows unexpectedly closes.
+This minimizes potential data loss if the application or Windows is unexpectedly terminated.
 
 ---
 
@@ -1113,21 +1406,21 @@ Application activity is recorded in:
 timelimiter.log
 ```
 
-The log contains information such as:
+The log may contain information about:
 
-* Application startup
-* Configuration loading
-* Usage loading
-* Remaining time
-* Keyboard/mouse monitoring startup
-* Inactivity detection
-* Timer pause
-* Timer resume
-* Password attempts
-* Password timeout
-* Daily reset
-* Windows shutdown
-* Application errors
+* application startup;
+* configuration loading;
+* usage data loading;
+* remaining time;
+* keyboard and mouse monitoring;
+* inactivity detection;
+* timer pause;
+* timer resume;
+* password attempts;
+* password timeout;
+* daily limit reset;
+* Windows shutdown;
+* application errors.
 
 Example:
 
@@ -1141,19 +1434,23 @@ Example:
 
 ---
 
-## Inactivity Detection
+## Activity Detection
 
 TimeLimiter uses the `pynput` library to monitor keyboard and mouse activity.
 
 ### Keyboard
 
-* Key presses
+The application monitors:
+
+* key presses.
 
 ### Mouse
 
-* Mouse movement
-* Mouse clicks
-* Mouse scrolling
+The application monitors:
+
+* mouse movement;
+* mouse button clicks;
+* mouse wheel scrolling.
 
 If no activity is detected for:
 
@@ -1161,46 +1458,52 @@ If no activity is detected for:
 10 seconds
 ```
 
-the usage timer pauses.
+the usage timer is paused.
 
-The inactivity threshold is controlled by:
+The inactivity threshold is defined in `main.py`:
 
 ```python
 INACTIVITY_TIMEOUT = 10
 ```
 
-in `main.py`.
-
 When the timer is paused because of inactivity:
 
-* The countdown stops.
-* No usage time is consumed.
-* The timer changes to blue.
-* The application continues monitoring for activity.
+* the countdown stops;
+* usage time is not consumed;
+* the timer turns blue;
+* the application continues monitoring user activity.
 
-As soon as keyboard or mouse activity is detected, the timer resumes and returns to its normal time-based color.
+As soon as mouse movement or a key press is detected, the timer resumes and returns to the normal color indicator.
 
 ---
 
-## Timer Overlay
+## On-Screen Timer
 
 The timer is displayed as a transparent overlay at the top center of the screen.
 
 Example:
 
 ```text
-          04:37
+          00:04:37
 ```
 
-The window:
+The timer uses the:
 
-* Has no standard Windows border
-* Is always on top
-* Is horizontally centered
-* Uses a transparent background
-* Displays the remaining time as `MM:SS`
+```text
+HH:MM:SS
+```
 
-The timer can be disabled through:
+format.
+
+The timer window:
+
+* has no standard Windows window frame;
+* stays above other windows;
+* is centered horizontally;
+* has a transparent background;
+* displays the remaining time in `HH:MM:SS` format.
+
+The timer display can be disabled using:
 
 ```text
 timer_enabled=false
@@ -1210,7 +1513,7 @@ timer_enabled=false
 
 ## Project Structure
 
-The project currently has a simple structure:
+The project has a simple structure:
 
 ```text
 TimeLimiter/
@@ -1224,7 +1527,7 @@ TimeLimiter/
 └── timelimiter.log
 ```
 
-The following files are generated automatically when the application is first launched:
+The following files are automatically created on the first application launch:
 
 * `settings.txt`
 * `usage.txt`
@@ -1241,7 +1544,7 @@ The following files are generated automatically when the application is first la
 
 ### Python
 
-Development currently uses Python 3.12.
+Python 3.12 is used for development.
 
 ### Python Dependencies
 
@@ -1252,13 +1555,13 @@ pynput==1.8.2
 pyinstaller==6.22.2
 ```
 
-`pynput` is required by the application for global keyboard and mouse activity monitoring.
+`pynput` is used for global keyboard and mouse activity monitoring.
 
-`pyinstaller` is used to build the standalone Windows executable.
+`pyinstaller` is used to create a standalone Windows executable.
 
 ---
 
-## Installation for Development
+## Development Installation
 
 Clone the repository:
 
@@ -1266,7 +1569,7 @@ Clone the repository:
 git clone https://github.com/golgi-complex/TimeLimiter.git
 ```
 
-Enter the project directory:
+Navigate to the project directory:
 
 ```powershell
 cd TimeLimiter
@@ -1278,13 +1581,13 @@ Create a virtual environment:
 python -m venv myenv
 ```
 
-Activate it:
+Activate the virtual environment:
 
 ```powershell
 .\myenv\Scripts\Activate.ps1
 ```
 
-Install dependencies:
+Install the dependencies:
 
 ```powershell
 pip install -r requirements.txt
@@ -1292,7 +1595,7 @@ pip install -r requirements.txt
 
 ---
 
-## Running from Python
+## Running with Python
 
 Start the application with:
 
@@ -1312,9 +1615,9 @@ in the same directory as `main.py`.
 
 ---
 
-## Building the Windows Executable
+## Building the Windows `.exe`
 
-TimeLimiter can be packaged into a standalone `.exe` using PyInstaller.
+TimeLimiter can be packaged as a standalone `.exe` using PyInstaller.
 
 Build command:
 
@@ -1328,19 +1631,19 @@ After a successful build, the executable will be located at:
 dist\TimeLimiter.exe
 ```
 
-The application does not require Python to be installed on the target computer when using the compiled executable.
+Python is not required on the target computer when using the compiled executable.
 
 ---
 
 ## Installing the Executable
 
-A recommended installation directory is:
+The recommended installation directory is:
 
 ```text
 C:\ProgramData\TimeLimiter
 ```
 
-The final installation can look like:
+The final structure may look like:
 
 ```text
 C:\ProgramData\TimeLimiter\
@@ -1351,13 +1654,13 @@ C:\ProgramData\TimeLimiter\
 └── timelimiter.log
 ```
 
-Because TimeLimiter stores its files relative to the executable, keeping the executable and configuration files together makes the application easy to manage and move.
+Because TimeLimiter stores its files relative to the executable location, keeping the `.exe` and configuration files in the same directory makes the application easier to manage and move.
 
 ---
 
 ## Windows Startup
 
-TimeLimiter can be configured to start automatically when Windows starts.
+TimeLimiter can be configured to start automatically with Windows.
 
 The recommended approach is:
 
@@ -1367,7 +1670,7 @@ The recommended approach is:
 C:\ProgramData\TimeLimiter\TimeLimiter.exe
 ```
 
-2. Create a Windows Startup shortcut pointing to:
+2. Create a Windows shortcut pointing to:
 
 ```text
 C:\ProgramData\TimeLimiter\TimeLimiter.exe
@@ -1375,7 +1678,7 @@ C:\ProgramData\TimeLimiter\TimeLimiter.exe
 
 3. Place the shortcut in the Windows Startup folder.
 
-For system-wide startup, the Startup folder is:
+The system-wide Startup folder is:
 
 ```text
 C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp
@@ -1383,21 +1686,29 @@ C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp
 
 ### Important
 
-Do **not** simply move the executable itself into the Startup folder if you want application files to remain in:
+**It is not recommended to place `TimeLimiter.exe` directly inside the Startup folder** if you want the application's files to remain in:
 
 ```text
 C:\ProgramData\TimeLimiter
 ```
 
-TimeLimiter intentionally stores `settings.txt`, `usage.txt`, and `timelimiter.log` next to the executable.
+TimeLimiter intentionally stores:
 
-Therefore, the executable should remain in:
+```text
+settings.txt
+usage.txt
+timelimiter.log
+```
+
+next to the executable.
+
+Therefore, the `.exe` should remain here:
 
 ```text
 C:\ProgramData\TimeLimiter
 ```
 
-and the Startup folder should contain a shortcut to it.
+while the Startup folder should contain a **shortcut** pointing to the executable.
 
 ---
 
@@ -1409,18 +1720,18 @@ For development and testing, the default limit is intentionally small:
 limit_minutes=5
 ```
 
-This makes it possible to test the complete workflow without waiting for a long period.
+This makes it possible to test the application quickly.
 
 ### Testing the Inactivity Pause
 
 1. Start TimeLimiter.
-2. Do not touch the mouse or keyboard.
+2. Do not move the mouse or press any keys.
 3. Wait 10 seconds.
 4. The timer should turn blue.
 5. The countdown should stop.
 6. Move the mouse or press a key.
 7. The timer should return to its normal color.
-8. The countdown should continue.
+8. The countdown should resume.
 
 ### Testing the Daily Limit
 
@@ -1436,23 +1747,23 @@ to:
 limit_minutes=1
 ```
 
-The timer will count down from:
+The timer will start at:
 
 ```text
-01:00
+00:01:00
 ```
 
-After reaching:
+When it reaches:
 
 ```text
-00:00
+00:00:00
 ```
 
-the password window should appear.
+the password entry window should appear.
 
 ### Testing the Password
 
-Default password:
+The default password is:
 
 ```text
 1234
@@ -1460,53 +1771,64 @@ Default password:
 
 Enter the correct password.
 
-The timer should receive another full session.
+The timer should receive another full usage period.
 
-For example, when the configured limit is 5 minutes:
+For example, with a 5-minute limit:
 
 ```text
-05:00
+00:05:00
 ```
 
-### Testing the Password Timeout
+### Testing the Password Countdown
 
-When the password window appears, do not enter the password.
+After the password window appears, do not enter a password.
 
-After 60 seconds, TimeLimiter executes:
+The countdown will proceed:
+
+```text
+00:01:00
+00:00:59
+00:00:58
+...
+00:00:01
+00:00:00
+```
+
+After 60 seconds, TimeLimiter will execute:
 
 ```text
 shutdown /s /t 0
 ```
 
-and Windows shuts down.
+and Windows will shut down.
 
-> Use this test carefully on a real system. Save your work before testing the shutdown behavior.
+> Be careful when testing this feature on a real computer. Save all important work before testing.
 
 ---
 
-## Design Decisions
+## Architectural Decisions
 
 ### Active Usage Only
 
-TimeLimiter counts only periods during which the user is actively interacting with the computer.
+TimeLimiter counts only periods when the user actively interacts with the computer.
 
-If there is no keyboard or mouse activity for 10 seconds, the timer stops.
+If there is no keyboard or mouse activity for 10 seconds, the timer pauses.
 
-This prevents idle periods from consuming the daily allowance.
+This prevents the daily limit from being consumed while the computer is idle.
 
 ### Local Configuration
 
-Configuration is stored in a simple text file instead of the Windows Registry.
+Configuration is stored in a plain text file instead of the Windows Registry.
 
 Advantages:
 
-* Easy to edit
-* Easy to back up
-* Easy to inspect
-* Portable
-* No installer required
+* simple editing;
+* easy backup;
+* easy inspection;
+* portability;
+* no installer required.
 
-### Relative Application Storage
+### Files Stored Next to the Application
 
 Application files are stored next to the executable.
 
@@ -1514,51 +1836,63 @@ This avoids hard-coded paths and makes the application portable.
 
 ### Simple Architecture
 
-The application intentionally uses a small number of dependencies and relies heavily on Python's standard library.
+The application intentionally uses a small number of dependencies and relies on the Python standard library whenever possible.
+
+### Localization
+
+Interface strings are stored separately from the main application logic.
+
+This makes it possible to add additional languages without modifying the core functionality.
+
+The current version supports:
+
+* English
+* Russian
 
 ---
 
-## Security Considerations
+## Security
 
-TimeLimiter is designed as a **simple parental-control utility**, not as a hardened security product.
+TimeLimiter is designed as a **simple parental control utility**, not as a hardened security system.
 
-The current version does not attempt to protect itself against an experienced Windows user.
+The current version does not attempt to protect the application against a technically experienced user.
 
-For example, it does not currently prevent:
+For example, it does not prevent:
 
-* Terminating the process through Task Manager
-* Editing `settings.txt`
-* Deleting `usage.txt`
-* Modifying the executable
-* Booting another operating system
-* Running Windows with administrative tools
+* terminating the process through Task Manager;
+* editing `settings.txt`;
+* deleting `usage.txt`;
+* modifying the executable;
+* booting another operating system;
+* using Windows administrative tools.
 
-The application is intentionally kept simple because its primary purpose is to provide a basic time limit for ordinary use.
+The application is intentionally kept simple because its primary purpose is to provide a basic usage-time restriction for normal everyday computer use.
 
 ---
 
 ## Known Limitations
 
 * The parent password is stored as plain text.
-* The application does not protect its files from manual modification.
-* The application does not prevent process termination.
-* The application does not provide a graphical settings interface.
-* The application does not synchronize usage between multiple computers.
-* The application does not provide remote parental management.
-* Only keyboard and mouse activity are currently used to determine user activity.
-* The inactivity threshold is currently defined in the source code.
-* The application is currently Windows-only.
+* Application files are not protected from manual modification.
+* The process can be terminated through Task Manager.
+* There is no graphical settings interface.
+* Usage data is not synchronized between multiple computers.
+* There is no remote parental management.
+* Only keyboard and mouse activity are currently monitored.
+* The inactivity threshold is currently defined directly in the source code.
+* Usage data is saved every 10 seconds, so a small amount of recent usage data may be lost if the application or Windows is unexpectedly terminated.
+* The application currently works only on Windows.
 
 ---
 
 ## Technology Stack
 
-TimeLimiter is built with:
+TimeLimiter uses:
 
-* **Python 3.12** — application runtime
+* **Python 3.12** — main programming language and runtime
 * **Tkinter** — graphical user interface
 * **pynput** — keyboard and mouse monitoring
-* **PyInstaller** — Windows executable packaging
+* **PyInstaller** — Windows `.exe` packaging
 * **Windows shutdown command** — automatic system shutdown
 * **Python logging** — application logging
 
@@ -1566,6 +1900,6 @@ TimeLimiter is built with:
 
 ## Disclaimer
 
-TimeLimiter is provided as-is.
+TimeLimiter is provided **as is**.
 
-The application directly uses the Windows shutdown command when the password-entry timeout expires. Always test the application in a controlled environment before deploying it on a production computer.
+When the password-entry timeout expires, the application directly executes the Windows shutdown command. Test the application carefully in a controlled environment before using it on a production or shared computer.
