@@ -1,0 +1,94 @@
+2026-09-03 21:02:26 | INFO | ============================================================
+2026-09-03 21:02:26 | INFO | TimeLimiter started
+2026-09-03 21:02:26 | INFO | Settings loaded: limit=3 minutes, timer_enabled=True
+2026-09-03 21:02:26 | INFO | Usage loaded: date=2026-09-03, used_seconds=32
+2026-09-03 21:02:26 | INFO | Remaining time: 148 seconds
+2026-09-03 21:04:42 | INFO | ============================================================
+2026-09-03 21:04:42 | INFO | TimeLimiter started
+2026-09-03 21:04:42 | INFO | Settings loaded: limit=3 minutes, timer_enabled=True
+2026-09-03 21:04:42 | INFO | Usage loaded: date=2026-09-03, used_seconds=51
+2026-09-03 21:04:42 | INFO | Remaining time: 129 seconds
+2026-09-03 21:05:34 | INFO | ============================================================
+2026-09-03 21:05:34 | INFO | TimeLimiter started
+2026-09-03 21:05:34 | INFO | Settings loaded: limit=3 minutes, timer_enabled=True
+2026-09-03 21:05:34 | INFO | Usage loaded: date=2026-09-03, used_seconds=58
+2026-09-03 21:05:34 | INFO | Remaining time: 122 seconds
+2026-09-03 21:06:19 | INFO | ============================================================
+2026-09-03 21:06:19 | INFO | TimeLimiter started
+2026-09-03 21:06:19 | INFO | Settings loaded: limit=20 minutes, timer_enabled=True
+2026-09-03 21:06:19 | INFO | Usage loaded: date=2026-09-03, used_seconds=64
+2026-09-03 21:06:19 | INFO | Remaining time: 1136 seconds
+2026-09-03 21:07:05 | INFO | ============================================================
+2026-09-03 21:07:05 | INFO | TimeLimiter started
+2026-09-03 21:07:05 | INFO | Settings loaded: limit=1 minutes, timer_enabled=True
+2026-09-03 21:07:05 | INFO | Usage loaded: date=2026-09-03, used_seconds=68
+2026-09-03 21:07:05 | INFO | Remaining time: 0 seconds
+2026-09-03 21:07:55 | INFO | ============================================================
+2026-09-03 21:07:55 | INFO | TimeLimiter started
+2026-09-03 21:07:55 | INFO | Settings loaded: limit=1 minutes, timer_enabled=True
+2026-09-03 21:07:55 | INFO | Usage loaded: date=2026-09-03, used_seconds=68
+2026-09-03 21:07:55 | INFO | Remaining time: 0 seconds
+2026-09-03 21:07:55 | INFO | Daily time limit reached. Showing password window.
+2026-09-03 21:08:01 | INFO | Correct parent password entered.
+2026-09-03 21:08:01 | INFO | Session extended by 1 minutes.
+2026-09-03 21:10:11 | INFO | ============================================================
+2026-09-03 21:10:11 | INFO | TimeLimiter started
+2026-09-03 21:10:11 | INFO | Settings loaded: limit=1 minutes, timer_enabled=True
+2026-09-03 21:10:11 | INFO | Usage loaded: date=2026-09-03, used_seconds=80
+2026-09-03 21:10:11 | INFO | Remaining time: 0 seconds
+2026-09-03 21:10:11 | INFO | Daily time limit reached. Showing password window.
+2026-09-03 21:10:19 | INFO | Correct parent password entered.
+2026-09-03 21:10:19 | INFO | Session extended by 1 minutes.
+2026-09-03 21:11:26 | INFO | ============================================================
+2026-09-03 21:11:26 | INFO | TimeLimiter started
+2026-09-03 21:11:26 | INFO | Settings loaded: limit=5 minutes, timer_enabled=True
+2026-09-03 21:11:26 | INFO | Usage loaded: date=2026-09-03, used_seconds=106
+2026-09-03 21:11:26 | INFO | Remaining time: 194 seconds
+2026-09-03 21:11:49 | INFO | ============================================================
+2026-09-03 21:11:49 | INFO | TimeLimiter started
+2026-09-03 21:11:49 | INFO | Settings loaded: limit=1 minutes, timer_enabled=True
+2026-09-03 21:11:49 | INFO | Usage loaded: date=2026-09-03, used_seconds=121
+2026-09-03 21:11:49 | INFO | Remaining time: 0 seconds
+2026-09-03 21:11:49 | INFO | Daily time limit reached. Showing password window.
+2026-09-03 21:12:07 | INFO | Correct parent password entered.
+2026-09-03 21:12:07 | INFO | Session extended by 1 minutes.
+2026-09-03 21:14:56 | INFO | ============================================================
+2026-09-03 21:14:56 | INFO | TimeLimiter started
+2026-09-03 21:14:56 | INFO | Settings loaded: limit=5 minutes, timer_enabled=True
+2026-09-03 21:14:56 | INFO | Usage loaded: date=2026-09-03, used_seconds=130
+2026-09-03 21:14:56 | INFO | Remaining time: 170 seconds
+2026-09-03 21:31:08 | INFO | ============================================================
+2026-09-03 21:31:08 | INFO | TimeLimiter started
+2026-09-03 21:31:08 | INFO | Application directory: C:\Users\Illia\Documents\My Code\TimeLimiter
+2026-09-03 21:31:08 | INFO | Settings loaded: limit=5 minutes, timer_enabled=True
+2026-09-03 21:31:08 | INFO | Usage loaded: date=2026-09-03, used_seconds=140
+2026-09-03 21:31:08 | INFO | Remaining time: 160 seconds
+2026-09-04 13:32:14 | INFO | ============================================================
+2026-09-04 13:32:14 | INFO | TimeLimiter started
+2026-09-04 13:32:14 | INFO | Application directory: C:\Users\Illia\Documents\My Code\TimeLimiter
+2026-09-04 13:32:14 | INFO | Settings loaded: limit=5 minutes, timer_enabled=True
+2026-09-04 13:32:14 | INFO | New day detected. Resetting usage from 140 seconds.
+2026-09-04 13:32:14 | INFO | Usage loaded: date=2026-09-04, used_seconds=0
+2026-09-04 13:32:14 | INFO | Remaining time: 300 seconds
+2026-09-04 13:35:03 | INFO | ============================================================
+2026-09-04 13:35:03 | INFO | TimeLimiter started
+2026-09-04 13:35:03 | INFO | Application directory: C:\Users\Illia\Documents\My Code\TimeLimiter
+2026-09-04 13:35:03 | INFO | Settings loaded: limit=5 minutes, timer_enabled=True
+2026-09-04 13:35:03 | INFO | Usage loaded: date=2026-09-04, used_seconds=0
+2026-09-04 13:35:03 | INFO | Remaining time: 300 seconds
+2026-09-04 13:35:03 | INFO | Keyboard and mouse activity monitoring started.
+2026-09-04 13:35:13 | INFO | User inactive for 10 seconds. Timer paused.
+2026-09-04 13:35:16 | INFO | User activity detected. Timer resumed.
+2026-09-04 13:35:30 | INFO | User inactive for 10 seconds. Timer paused.
+2026-09-04 13:35:36 | INFO | User activity detected. Timer resumed.
+2026-09-04 13:35:38 | INFO | Stopping keyboard and mouse listeners.
+2026-09-04 13:37:24 | INFO | ============================================================
+2026-09-04 13:37:24 | INFO | TimeLimiter started
+2026-09-04 13:37:24 | INFO | Application directory: C:\Users\Illia\Documents\My Code\TimeLimiter
+2026-09-04 13:37:24 | INFO | Settings loaded: limit=5 minutes, timer_enabled=True
+2026-09-04 13:37:24 | INFO | Usage loaded: date=2026-09-04, used_seconds=20
+2026-09-04 13:37:24 | INFO | Remaining time: 280 seconds
+2026-09-04 13:37:24 | INFO | Keyboard and mouse activity monitoring started.
+2026-09-04 13:37:34 | INFO | User inactive for 10 seconds. Timer paused.
+2026-09-04 13:37:37 | INFO | User activity detected. Timer resumed.
+2026-09-04 13:37:40 | INFO | Stopping keyboard and mouse listeners.

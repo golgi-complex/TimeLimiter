@@ -1,0 +1,3 @@
+limit_minutes=5
+password=1234
+timer_enabled=true

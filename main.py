@@ -1,673 +1,1053 @@
-"""
-TimeLimiter - программа для контроля времени работы на компьютере
-Версия: 2.1 - с оверлей-таймером
-"""
-
-import os
-import sys
-import time
-import json
-import hashlib
-import datetime
 import logging
-import threading
 import subprocess
-from pathlib import Path
+import sys
 import tkinter as tk
-from tkinter import simpledialog, messagebox, ttk
-from typing import Dict, Tuple, Optional
+import threading
+import time
 
-# Настройка логирования
-LOG_FILE = Path(os.environ.get('PROGRAMDATA', 'C:\\ProgramData')) / "TimeLimiter" / "timer.log"
-LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+from pathlib import Path
+from datetime import date
+
+from pynput import keyboard, mouse
+
+
+APP_NAME = "TimeLimiter"
+
+
+# --------------------------------------------------
+# Application directory
+# --------------------------------------------------
+
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).parent
+else:
+    BASE_DIR = Path(__file__).parent
+
+
+SETTINGS_FILE = BASE_DIR / "settings.txt"
+USAGE_FILE = BASE_DIR / "usage.txt"
+LOG_FILE = BASE_DIR / "timelimiter.log"
+
+
+# Как часто сохранять usage.txt
+USAGE_SAVE_INTERVAL = 10
+
+# Через сколько секунд без активности
+# останавливаем таймер
+INACTIVITY_TIMEOUT = 10
+
+
+# --------------------------------------------------
+# Create application directory
+# --------------------------------------------------
+
+BASE_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+
+# --------------------------------------------------
+# Logging
+# --------------------------------------------------
 
 logging.basicConfig(
+    filename=LOG_FILE,
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger(__name__)
 
-# Константы
-GRACE_MINUTES = 5
-CONFIG_DIR = Path(os.environ.get('PROGRAMDATA', 'C:\\ProgramData')) / "TimeLimiter"
-CONFIG_FILE = CONFIG_DIR / "timer_config.json"
-DATA_FILE = CONFIG_DIR / "timer_data.txt"
-
-# Создаем директорию если её нет
-CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger(APP_NAME)
 
 
-class TimerOverlay:
-    """Оверлей с таймером поверх всех окон"""
+# --------------------------------------------------
+# Settings
+# --------------------------------------------------
 
-    def __init__(self):
-        self.root = None
-        self.label = None
-        self.is_visible = False
-        self.update_thread = None
-        self.running = False
+def create_default_settings():
+    try:
+        with open(
+            SETTINGS_FILE,
+            "w",
+            encoding="utf-8",
+        ) as file:
+            file.write("limit_minutes=5\n")
+            file.write("password=1234\n")
+            file.write("timer_enabled=true\n")
 
-    def create_overlay(self):
-        """Создание оверлей-окна"""
-        self.root = tk.Tk()
-        self.root.title("TimeLimiter - Таймер")
-
-        # Настройки окна
-        self.root.overrideredirect(True)  # Без рамок
-        self.root.attributes("-topmost", True)  # Поверх всех окон
-        self.root.attributes("-alpha", 0.9)  # Полупрозрачное
-        self.root.geometry("280x80+{}+{}".format(
-            self.root.winfo_screenwidth() // 2 - 140,  # Центр по горизонтали
-            10  # Отступ сверху
-        ))
-
-        # Фоновый цвет
-        self.root.configure(bg='#2c2c2c')
-
-        # Заголовок
-        title_label = tk.Label(
-            self.root,
-            text="⏱ ОСТАЛОСЬ ВРЕМЕНИ",
-            font=('Segoe UI', 10, 'bold'),
-            fg='#aaaaaa',
-            bg='#2c2c2c'
+        logger.info(
+            "Default settings file created."
         )
-        title_label.pack(pady=(8, 0))
 
-        # Время
-        self.label = tk.Label(
-            self.root,
-            text="--:--",
-            font=('Segoe UI', 32, 'bold'),
-            fg='#00ff00',
-            bg='#2c2c2c'
+    except Exception:
+        logger.exception(
+            "Failed to create default settings file."
         )
-        self.label.pack(pady=(0, 8))
 
-        # Кнопка закрытия (маленькая, незаметная)
-        close_btn = tk.Label(
-            self.root,
-            text="✕",
-            font=('Segoe UI', 8),
-            fg='#666666',
-            bg='#2c2c2c',
-            cursor='hand2'
+
+def load_settings():
+
+    settings = {
+        "limit_minutes": 5,
+        "password": "1234",
+        "timer_enabled": True,
+    }
+
+    if not SETTINGS_FILE.exists():
+
+        logger.warning(
+            "Settings file not found. "
+            "Creating default settings."
         )
-        close_btn.place(x=260, y=5)
-        close_btn.bind('<Button-1>', self.hide)
 
-        # Возможность перетаскивать окно
-        self.root.bind('<Button-1>', self.start_move)
-        self.root.bind('<B1-Motion>', self.on_move)
+        create_default_settings()
 
-        self.root.protocol("WM_DELETE_WINDOW", self.hide)
+        return settings
 
-        # Прячем окно при запуске
-        self.root.withdraw()
-        self.is_visible = False
+    try:
 
-    def start_move(self, event):
-        """Начало перетаскивания"""
-        self.x = event.x
-        self.y = event.y
+        with open(
+            SETTINGS_FILE,
+            "r",
+            encoding="utf-8",
+        ) as file:
 
-    def on_move(self, event):
-        """Перетаскивание окна"""
-        deltax = event.x - self.x
-        deltay = event.y - self.y
-        x = self.root.winfo_x() + deltax
-        y = self.root.winfo_y() + deltay
-        self.root.geometry(f"+{x}+{y}")
+            for line in file:
 
-    def update_time(self, minutes_left: int):
-        """Обновление отображаемого времени"""
-        if self.label and self.is_visible:
-            if minutes_left < 0:
-                minutes_left = 0
+                line = line.strip()
 
-            hours = minutes_left // 60
-            mins = minutes_left % 60
+                if not line or "=" not in line:
+                    continue
 
-            if hours > 0:
-                time_str = f"{hours:02d}:{mins:02d}"
-            else:
-                time_str = f"{mins:02d}:00"
+                key, value = line.split(
+                    "=",
+                    1,
+                )
 
-            self.label.config(text=time_str)
+                key = key.strip()
+                value = value.strip()
 
-            # Меняем цвет в зависимости от оставшегося времени
-            if minutes_left <= 5:
-                self.label.config(fg='#ff0000')  # Красный - критично
-            elif minutes_left <= 15:
-                self.label.config(fg='#ff8800')  # Оранжевый - скоро закончится
-            else:
-                self.label.config(fg='#00ff00')  # Зеленый - нормально
+                if key == "limit_minutes":
 
-            # Если осталось 0, мигаем
-            if minutes_left <= 0:
-                self.start_blinking()
-            else:
-                self.stop_blinking()
+                    try:
+                        settings["limit_minutes"] = int(
+                            value
+                        )
 
-    def start_blinking(self):
-        """Запуск мигания при нулевом времени"""
-        if not hasattr(self, 'blink_state'):
-            self.blink_state = False
-            self.blink_after_id = None
+                    except ValueError:
 
-        if self.blink_after_id:
-            self.root.after_cancel(self.blink_after_id)
-            self.blink_after_id = None
+                        logger.warning(
+                            "Invalid limit_minutes value: %s. "
+                            "Using default.",
+                            value,
+                        )
 
-        self.do_blink()
+                elif key == "password":
 
-    def do_blink(self):
-        """Мигание текста"""
-        if self.is_visible and self.label:
-            if self.blink_state:
-                self.label.config(fg='#ff0000')
-            else:
-                self.label.config(fg='#2c2c2c')  # Цвет фона - скрываем текст
+                    settings["password"] = value
 
-            self.blink_state = not self.blink_state
-            self.blink_after_id = self.root.after(500, self.do_blink)
+                elif key == "timer_enabled":
 
-    def stop_blinking(self):
-        """Остановка мигания"""
-        if hasattr(self, 'blink_after_id') and self.blink_after_id:
-            self.root.after_cancel(self.blink_after_id)
-            self.blink_after_id = None
+                    settings["timer_enabled"] = (
+                        value.lower() == "true"
+                    )
 
-        if self.label and self.is_visible:
-            self.label.config(fg='#00ff00')
+    except Exception:
 
-    def show(self):
-        """Показать таймер"""
-        if not self.root:
-            self.create_overlay()
+        logger.exception(
+            "Failed to read settings file."
+        )
 
-        self.root.deiconify()
-        self.is_visible = True
-        logger.info("Таймер отображен")
-
-        # Запускаем поток обновления, если его нет
-        if not self.running:
-            self.running = True
-            # Обновление через отдельный поток
-            threading.Thread(target=self._update_loop, daemon=True).start()
-
-    def hide(self, event=None):
-        """Скрыть таймер"""
-        if self.root:
-            self.root.withdraw()
-            self.is_visible = False
-            self.running = False
-            self.stop_blinking()
-            logger.info("Таймер скрыт")
-
-    def _update_loop(self):
-        """Цикл обновления времени в отдельном потоке"""
-        from queue import Queue
-        self.update_queue = Queue()
-
-        # Получаем ссылку на основной объект TimeLimiter
-        # Это будет установлено из main
-        while self.running:
-            if hasattr(self, 'limiter') and self.limiter:
-                config = self.limiter.config
-                effective_limit = config["limit_minutes"] + self.limiter.bonus_minutes
-                minutes_left = effective_limit - self.limiter.used_minutes
-
-                # Обновляем UI через main thread
-                if self.root:
-                    self.root.after(0, lambda: self.update_time(minutes_left))
-
-            time.sleep(1)  # Обновление каждую секунду
-
-    def set_limiter(self, limiter):
-        """Установка ссылки на основной объект"""
-        self.limiter = limiter
-
-    def destroy(self):
-        """Закрытие оверлея"""
-        self.running = False
-        if self.root:
-            self.root.destroy()
-            self.root = None
+    return settings
 
 
-class TimeLimiter:
-    """Основной класс программы TimeLimiter"""
+# --------------------------------------------------
+# Usage
+# --------------------------------------------------
 
-    def __init__(self):
-        self.config = self.load_config()
-        self.today_str, self.used_minutes, self.bonus_minutes = self.read_data()
-        self.lock = threading.Lock()
-        self.running = True
-        self.overlay = TimerOverlay()
-        self.overlay.set_limiter(self)
+def load_usage():
 
-    @staticmethod
-    def hash_password(pwd: str) -> str:
-        """Хеширование пароля с солью для дополнительной безопасности"""
-        salt = "TimeLimiterSalt2024"
-        return hashlib.sha256((salt + pwd).encode("utf-8")).hexdigest()
+    today = date.today().isoformat()
 
-    @staticmethod
-    def default_config() -> dict:
-        """Конфигурация по умолчанию"""
-        return {
-            "limit_minutes": 5,
-            "password_hash": TimeLimiter.hash_password("1234"),
-            "limit_enabled": True,
-            "auto_shutdown": True,
-            "warning_minutes": 1,
-            "show_timer": True,  # Новая опция - показывать таймер
-        }
+    usage = {
+        "date": today,
+        "used_seconds": 0,
+    }
 
-    def load_config(self) -> dict:
-        """Загрузка конфигурации с обработкой ошибок"""
-        try:
-            if not CONFIG_FILE.exists():
-                config = self.default_config()
-                self.save_config(config)
-                return config
+    if not USAGE_FILE.exists():
 
-            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+        logger.info(
+            "Usage file not found. "
+            "Starting from 0 seconds."
+        )
 
-            defaults = self.default_config()
-            for key, value in defaults.items():
-                config.setdefault(key, value)
+        save_usage(usage)
 
-            return config
+        return usage
 
-        except Exception as e:
-            logger.error(f"Ошибка загрузки конфигурации: {e}")
-            config = self.default_config()
-            self.save_config(config)
-            return config
+    try:
 
-    def save_config(self, config: dict):
-        """Сохранение конфигурации"""
-        try:
-            with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=2)
-            logger.info("Конфигурация сохранена")
-        except Exception as e:
-            logger.error(f"Ошибка сохранения конфигурации: {e}")
+        with open(
+            USAGE_FILE,
+            "r",
+            encoding="utf-8",
+        ) as file:
 
-    def read_data(self) -> Tuple[str, int, int]:
-        """Чтение данных за сегодняшний день"""
-        today_str = datetime.date.today().isoformat()
+            for line in file:
 
-        if not DATA_FILE.exists():
-            return today_str, 0, 0
+                line = line.strip()
 
-        try:
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                lines = f.read().splitlines()
-                if len(lines) >= 3 and lines[0] == today_str:
-                    return today_str, int(lines[1]), int(lines[2])
-        except Exception as e:
-            logger.error(f"Ошибка чтения данных: {e}")
+                if not line or "=" not in line:
+                    continue
 
-        return today_str, 0, 0
+                key, value = line.split(
+                    "=",
+                    1,
+                )
 
-    def save_data(self, date_str: str, used_minutes: int, bonus_minutes: int):
-        """Сохранение данных"""
-        try:
-            with open(DATA_FILE, 'w', encoding='utf-8') as f:
-                f.write(f"{date_str}\n{used_minutes}\n{bonus_minutes}")
-        except Exception as e:
-            logger.error(f"Ошибка сохранения данных: {e}")
+                key = key.strip()
+                value = value.strip()
 
-    def force_shutdown(self):
-        """Принудительное выключение компьютера или блокировка"""
-        # Скрываем таймер перед выключением
-        self.overlay.hide()
+                if key == "date":
 
-        if self.config.get("auto_shutdown", True):
-            logger.warning("Выключение компьютера!")
-            os.system("shutdown /s /f /t 0")
-        else:
-            logger.warning("Блокировка компьютера!")
-            os.system("rundll32.exe user32.dll,LockWorkStation")
-            sys.exit()
+                    usage["date"] = value
 
-    def ask_password(self, title: str, message: str) -> bool:
-        """Диалог ввода пароля с таймаутом"""
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
+                elif key == "used_seconds":
 
-        start_time = time.time()
-        grace_seconds = GRACE_MINUTES * 60
+                    try:
+                        usage["used_seconds"] = int(
+                            value
+                        )
 
-        while time.time() - start_time < grace_seconds:
-            remaining = int(grace_seconds - (time.time() - start_time))
-            message_with_time = f"{message}\n\nОсталось времени: {remaining} секунд"
+                    except ValueError:
 
-            pwd = simpledialog.askstring(
-                title,
-                message_with_time,
-                show='*',
-                parent=root
+                        logger.warning(
+                            "Invalid used_seconds value: %s. "
+                            "Resetting to 0.",
+                            value,
+                        )
+
+                        usage["used_seconds"] = 0
+
+    except Exception:
+
+        logger.exception(
+            "Failed to read usage file."
+        )
+
+        return usage
+
+    # Новый день
+    if usage["date"] != today:
+
+        logger.info(
+            "New day detected. "
+            "Resetting usage from %s seconds.",
+            usage["used_seconds"],
+        )
+
+        usage["date"] = today
+        usage["used_seconds"] = 0
+
+        save_usage(usage)
+
+    return usage
+
+
+def save_usage(usage):
+
+    try:
+
+        with open(
+            USAGE_FILE,
+            "w",
+            encoding="utf-8",
+        ) as file:
+
+            file.write(
+                f"date={usage['date']}\n"
             )
 
-            if pwd is not None:
-                if self.hash_password(pwd) == self.config["password_hash"]:
-                    root.destroy()
-                    logger.info("Пароль введен верно")
-                    return True
-                else:
-                    messagebox.showerror("Ошибка", "Неверный пароль!", parent=root)
-            else:
-                break
+            file.write(
+                f"used_seconds={usage['used_seconds']}\n"
+            )
 
-        root.destroy()
-        logger.warning("Время ввода пароля истекло или отменено")
-        return False
+    except Exception:
 
-    def show_warning(self, minutes_left: int):
-        """Показать предупреждение о скором окончании времени"""
-        if minutes_left <= 0:
-            return
-
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
-
-        messagebox.showwarning(
-            "⚠ Внимание!",
-            f"До окончания лимита времени осталось {minutes_left} минут!",
-            parent=root
-        )
-        root.destroy()
-
-    def check_limit(self):
-        """Проверка лимита с возможностью продления"""
-        with self.lock:
-            self.config = self.load_config()
-
-            if not self.config["limit_enabled"]:
-                # Если лимит выключен, скрываем таймер
-                if self.config.get("show_timer", True):
-                    self.overlay.hide()
-                return
-
-            effective_limit = self.config["limit_minutes"] + self.bonus_minutes
-
-            # Показываем или скрываем таймер
-            if self.config.get("show_timer", True):
-                self.overlay.show()
-            else:
-                self.overlay.hide()
-
-            # Проверяем, нужно ли показать предупреждение
-            if self.config.get("warning_minutes", 1) > 0:
-                minutes_left = effective_limit - self.used_minutes
-                if 0 < minutes_left <= self.config.get("warning_minutes", 1):
-                    self.show_warning(minutes_left)
-
-            if self.used_minutes >= effective_limit:
-                if self.ask_password(
-                    "Лимит времени исчерпан",
-                    f"Дневной лимит ({effective_limit} мин) исчерпан.\n"
-                    f"Введите пароль для продления еще на {self.config['limit_minutes']} минут:"
-                ):
-                    self.bonus_minutes += self.config["limit_minutes"]
-                    self.save_data(self.today_str, self.used_minutes, self.bonus_minutes)
-                    logger.info(f"Время продлено. Бонус: {self.bonus_minutes} мин")
-                else:
-                    self.force_shutdown()
-
-    def run(self):
-        """Основной цикл программы"""
-        logger.info("TimeLimiter запущен")
-
-        # Показываем таймер при старте если включен
-        if self.config.get("show_timer", True) and self.config["limit_enabled"]:
-            self.overlay.show()
-
-        # Первичная проверка при старте
-        self.check_limit()
-
-        while self.running:
-            time.sleep(60)  # Проверка каждую минуту
-
-            current_date_str = datetime.date.today().isoformat()
-
-            # Сброс в полночь
-            if current_date_str != self.today_str:
-                logger.info("Новый день - сброс счетчиков")
-                self.today_str = current_date_str
-                self.used_minutes = 0
-                self.bonus_minutes = 0
-
-            self.used_minutes += 1
-            self.save_data(self.today_str, self.used_minutes, self.bonus_minutes)
-
-            # Проверяем лимит каждые 5 минут
-            if self.used_minutes % 5 == 0:
-                self.check_limit()
-
-    def stop(self):
-        """Остановка программы"""
-        self.running = False
-        self.overlay.destroy()
-        logger.info("TimeLimiter остановлен")
-
-
-class SettingsWindow:
-    """Окно настроек"""
-
-    def __init__(self, config: dict):
-        self.config = config.copy()
-        self.root = None
-        self.limit_var = None
-        self.enabled_var = None
-        self.auto_shutdown_var = None
-        self.warning_var = None
-        self.show_timer_var = None
-        self.pwd_var = None
-
-    def show(self):
-        """Отображение окна настроек"""
-        self.root = tk.Tk()
-        self.root.title("Настройки TimeLimiter")
-        self.root.attributes("-topmost", True)
-        self.root.resizable(False, False)
-
-        main_frame = ttk.Frame(self.root, padding="20")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-
-        # Лимит времени
-        ttk.Label(main_frame, text="Дневной лимит (минут):").grid(
-            row=0, column=0, sticky=tk.W, pady=5
-        )
-        self.limit_var = tk.StringVar(value=str(self.config["limit_minutes"]))
-        ttk.Entry(main_frame, textvariable=self.limit_var, width=10).grid(
-            row=0, column=1, sticky=tk.W, pady=5
+        logger.exception(
+            "Failed to save usage data."
         )
 
-        # Включение/выключение
-        self.enabled_var = tk.BooleanVar(value=self.config["limit_enabled"])
-        ttk.Checkbutton(
-            main_frame,
-            text="Лимит включён",
-            variable=self.enabled_var
-        ).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
 
-        # Показывать таймер
-        self.show_timer_var = tk.BooleanVar(value=self.config.get("show_timer", True))
-        ttk.Checkbutton(
-            main_frame,
-            text="Показывать таймер поверх всех окон",
-            variable=self.show_timer_var
-        ).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=5)
-
-        # Автоматическое выключение
-        self.auto_shutdown_var = tk.BooleanVar(value=self.config.get("auto_shutdown", True))
-        ttk.Checkbutton(
-            main_frame,
-            text="Выключать компьютер при превышении (иначе блокировать)",
-            variable=self.auto_shutdown_var
-        ).grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=5)
-
-        # Предупреждение
-        ttk.Label(main_frame, text="Предупреждение за (минут до окончания):").grid(
-            row=4, column=0, sticky=tk.W, pady=5
-        )
-        self.warning_var = tk.StringVar(value=str(self.config.get("warning_minutes", 1)))
-        ttk.Entry(main_frame, textvariable=self.warning_var, width=10).grid(
-            row=4, column=1, sticky=tk.W, pady=5
-        )
-
-        # Смена пароля
-        ttk.Label(
-            main_frame,
-            text="Новый пароль (оставьте пустым, чтобы не менять):"
-        ).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(15, 5))
-
-        self.pwd_var = tk.StringVar()
-        ttk.Entry(main_frame, textvariable=self.pwd_var, show="*", width=20).grid(
-            row=6, column=0, columnspan=2, pady=5
-        )
-
-        # Кнопки
-        btn_frame = ttk.Frame(main_frame)
-        btn_frame.grid(row=7, column=0, columnspan=2, pady=20)
-
-        ttk.Button(
-            btn_frame,
-            text="Сохранить",
-            command=self.on_save,
-            width=12
-        ).pack(side=tk.LEFT, padx=5)
-
-        ttk.Button(
-            btn_frame,
-            text="Отмена",
-            command=self.root.destroy,
-            width=12
-        ).pack(side=tk.LEFT, padx=5)
-
-        # Центрируем окно
-        self.root.update_idletasks()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.root.winfo_screenheight() // 2) - (height // 2)
-        self.root.geometry(f'{width}x{height}+{x}+{y}')
-
-        self.root.mainloop()
-
-    def on_save(self):
-        """Сохранение настроек"""
-        try:
-            new_limit = int(self.limit_var.get())
-            if new_limit <= 0:
-                raise ValueError("Лимит должен быть положительным числом")
-
-            warning_minutes = int(self.warning_var.get())
-            if warning_minutes < 0:
-                raise ValueError("Предупреждение не может быть отрицательным")
-
-        except ValueError as e:
-            messagebox.showerror("Ошибка", str(e), parent=self.root)
-            return
-
-        # Обновляем конфигурацию
-        self.config["limit_minutes"] = new_limit
-        self.config["limit_enabled"] = self.enabled_var.get()
-        self.config["auto_shutdown"] = self.auto_shutdown_var.get()
-        self.config["warning_minutes"] = warning_minutes
-        self.config["show_timer"] = self.show_timer_var.get()
-
-        # Меняем пароль если введен
-        new_pwd = self.pwd_var.get().strip()
-        if new_pwd:
-            self.config["password_hash"] = TimeLimiter.hash_password(new_pwd)
-            logger.info("Пароль изменен")
-
-        # Сохраняем
-        limiter = TimeLimiter()
-        limiter.save_config(self.config)
-
-        messagebox.showinfo("Готово", "Настройки сохранены", parent=self.root)
-        self.root.destroy()
-
-
-def run_settings():
-    """Запуск режима настроек"""
-    limiter = TimeLimiter()
-
-    # Запрашиваем пароль для доступа к настройкам
-    if not limiter.ask_password(
-        "Настройки TimeLimiter",
-        "Введите пароль для доступа к настройкам:"
-    ):
-        logger.warning("Доступ к настройкам запрещен")
-        sys.exit()
-
-    # Показываем окно настроек
-    settings = SettingsWindow(limiter.config)
-    settings.show()
-
+# --------------------------------------------------
+# Main application
+# --------------------------------------------------
 
 def main():
-    """Главная функция"""
-    # Проверяем, не запущен ли уже экземпляр
+
+    logger.info(
+        "=" * 60
+    )
+
+    logger.info(
+        "TimeLimiter started"
+    )
+
+    logger.info(
+        "Application directory: %s",
+        BASE_DIR,
+    )
+
+    settings = load_settings()
+
+    logger.info(
+        "Settings loaded: limit=%s minutes, "
+        "timer_enabled=%s",
+        settings["limit_minutes"],
+        settings["timer_enabled"],
+    )
+
+    usage = load_usage()
+
+    logger.info(
+        "Usage loaded: date=%s, "
+        "used_seconds=%s",
+        usage["date"],
+        usage["used_seconds"],
+    )
+
+    # --------------------------------------------------
+    # Time calculation
+    # --------------------------------------------------
+
+    limit_seconds = (
+        settings["limit_minutes"] * 60
+    )
+
+    remaining_seconds = max(
+        0,
+        limit_seconds - usage["used_seconds"],
+    )
+
+    logger.info(
+        "Remaining time: %s seconds",
+        remaining_seconds,
+    )
+
+    # --------------------------------------------------
+    # Activity tracking
+    # --------------------------------------------------
+
+    last_activity_time = time.monotonic()
+
+    activity_lock = threading.Lock()
+
+    def register_activity():
+
+        nonlocal last_activity_time
+
+        with activity_lock:
+
+            last_activity_time = time.monotonic()
+
+    def keyboard_activity(key):
+
+        register_activity()
+
+    def mouse_activity(*args):
+
+        register_activity()
+
+    keyboard_listener = keyboard.Listener(
+        on_press=keyboard_activity,
+    )
+
+    mouse_listener = mouse.Listener(
+        on_move=mouse_activity,
+        on_click=mouse_activity,
+        on_scroll=mouse_activity,
+    )
+
+    keyboard_listener.start()
+    mouse_listener.start()
+
+    logger.info(
+        "Keyboard and mouse activity monitoring started."
+    )
+
+    # --------------------------------------------------
+    # Tkinter
+    # --------------------------------------------------
+
+    root = tk.Tk()
+
+    root.overrideredirect(True)
+
+    root.attributes(
+        "-topmost",
+        True,
+    )
+
+    transparent_color = "#000001"
+
+    root.configure(
+        bg=transparent_color
+    )
+
+    root.attributes(
+        "-transparentcolor",
+        transparent_color,
+    )
+
+    window_width = 180
+    window_height = 60
+
+    screen_width = (
+        root.winfo_screenwidth()
+    )
+
+    x = (
+        screen_width - window_width
+    ) // 2
+
+    y = 0
+
+    root.geometry(
+        f"{window_width}x{window_height}+{x}+{y}"
+    )
+
+    if not settings["timer_enabled"]:
+
+        root.withdraw()
+
+        logger.info(
+            "Timer display is disabled."
+        )
+
+    timer_label = tk.Label(
+        root,
+        text="00:00",
+        font=(
+            "Segoe UI",
+            31,
+            "bold",
+        ),
+        fg="#7CFC00",
+        bg=transparent_color,
+    )
+
+    timer_label.pack(
+        expand=True
+    )
+
+    # --------------------------------------------------
+    # State
+    # --------------------------------------------------
+
+    blink_visible = True
+
+    password_window = None
+
+    password_timeout_seconds = 60
+
+    password_timeout_job = None
+
+    seconds_since_save = 0
+
+    was_inactive = False
+
+    # --------------------------------------------------
+    # Shutdown
+    # --------------------------------------------------
+
+    def shutdown_computer():
+
+        logger.warning(
+            "Password timeout reached. "
+            "Shutting down Windows."
+        )
+
+        try:
+
+            subprocess.run(
+                [
+                    "shutdown",
+                    "/s",
+                    "/t",
+                    "0",
+                ],
+                check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+
+        except Exception:
+
+            logger.exception(
+                "Failed to execute "
+                "Windows shutdown command."
+            )
+
+    # --------------------------------------------------
+    # Timer color
+    # --------------------------------------------------
+
+    def update_timer_color():
+
+        # Если пользователь бездействует,
+        # таймер становится голубым.
+        if was_inactive:
+
+            color = "#00BFFF"
+
+        elif remaining_seconds > 15 * 60:
+
+            color = "#7CFC00"
+
+        elif remaining_seconds >= 5 * 60:
+
+            color = "#FFA500"
+
+        else:
+
+            color = "#FF3333"
+
+        timer_label.config(
+            fg=color
+        )
+
+    # --------------------------------------------------
+    # Blink timer
+    # --------------------------------------------------
+
+    def blink_timer():
+
+        nonlocal blink_visible
+
+        if remaining_seconds <= 0:
+
+            blink_visible = (
+                not blink_visible
+            )
+
+            if blink_visible:
+
+                timer_label.config(
+                    fg="#FF3333"
+                )
+
+            else:
+
+                timer_label.config(
+                    fg=transparent_color
+                )
+
+            root.after(
+                500,
+                blink_timer,
+            )
+
+    # --------------------------------------------------
+    # Password window
+    # --------------------------------------------------
+
+    def show_password_window():
+
+        nonlocal password_window
+        nonlocal password_timeout_seconds
+        nonlocal password_timeout_job
+
+        if password_window is not None:
+            return
+
+        logger.info(
+            "Daily time limit reached. "
+            "Showing password window."
+        )
+
+        password_window = tk.Toplevel(
+            root
+        )
+
+        password_window.title(
+            "TimeLimiter"
+        )
+
+        password_window.resizable(
+            False,
+            False,
+        )
+
+        password_window.attributes(
+            "-topmost",
+            True,
+        )
+
+        password_window.protocol(
+            "WM_DELETE_WINDOW",
+            lambda: None,
+        )
+
+        window_width = 360
+        window_height = 230
+
+        screen_width = (
+            password_window.winfo_screenwidth()
+        )
+
+        screen_height = (
+            password_window.winfo_screenheight()
+        )
+
+        x = (
+            screen_width - window_width
+        ) // 2
+
+        y = (
+            screen_height - window_height
+        ) // 2
+
+        password_window.geometry(
+            f"{window_width}x{window_height}+{x}+{y}"
+        )
+
+        title_label = tk.Label(
+            password_window,
+            text="Time limit reached",
+            font=(
+                "Segoe UI",
+                16,
+                "bold",
+            ),
+        )
+
+        title_label.pack(
+            pady=(20, 5)
+        )
+
+        message_label = tk.Label(
+            password_window,
+            text=(
+                "Enter the parent password "
+                "to continue."
+            ),
+            font=(
+                "Segoe UI",
+                10,
+            ),
+        )
+
+        message_label.pack(
+            pady=(0, 10)
+        )
+
+        timeout_label = tk.Label(
+            password_window,
+            text="Time remaining: 01:00",
+            font=(
+                "Segoe UI",
+                10,
+                "bold",
+            ),
+        )
+
+        timeout_label.pack(
+            pady=(0, 10)
+        )
+
+        password_entry = tk.Entry(
+            password_window,
+            font=(
+                "Segoe UI",
+                12,
+            ),
+            show="*",
+            justify="center",
+            width=25,
+        )
+
+        password_entry.pack()
+
+        error_label = tk.Label(
+            password_window,
+            text="",
+            font=(
+                "Segoe UI",
+                9,
+            ),
+        )
+
+        error_label.pack(
+            pady=(5, 5)
+        )
+
+        def update_password_timeout():
+
+            nonlocal password_timeout_seconds
+            nonlocal password_timeout_job
+
+            if password_window is None:
+                return
+
+            if password_timeout_seconds <= 0:
+
+                timeout_label.config(
+                    text="Time remaining: 00:00"
+                )
+
+                logger.info(
+                    "Password entry timeout reached."
+                )
+
+                password_timeout_job = None
+
+                shutdown_computer()
+
+                return
+
+            minutes = (
+                password_timeout_seconds // 60
+            )
+
+            seconds = (
+                password_timeout_seconds % 60
+            )
+
+            timeout_label.config(
+                text=(
+                    f"Time remaining: "
+                    f"{minutes:02d}:{seconds:02d}"
+                )
+            )
+
+            password_timeout_seconds -= 1
+
+            password_timeout_job = (
+                password_window.after(
+                    1000,
+                    update_password_timeout,
+                )
+            )
+
+        def check_password():
+
+            nonlocal remaining_seconds
+            nonlocal password_window
+            nonlocal password_timeout_job
+            nonlocal seconds_since_save
+
+            entered_password = (
+                password_entry.get()
+            )
+
+            if (
+                entered_password
+                == settings["password"]
+            ):
+
+                logger.info(
+                    "Correct parent password entered."
+                )
+
+                if password_timeout_job is not None:
+
+                    try:
+
+                        password_window.after_cancel(
+                            password_timeout_job
+                        )
+
+                    except tk.TclError:
+                        pass
+
+                    password_timeout_job = None
+
+                remaining_seconds = (
+                    limit_seconds
+                )
+
+                usage["used_seconds"] = (
+                    limit_seconds
+                )
+
+                save_usage(
+                    usage
+                )
+
+                seconds_since_save = 0
+
+                password_window.destroy()
+
+                password_window = None
+
+                register_activity()
+
+                was_inactive = False
+
+                update_timer_color()
+
+                logger.info(
+                    "Session extended by %s minutes.",
+                    settings["limit_minutes"],
+                )
+
+                root.after(
+                    1000,
+                    update_timer,
+                )
+
+            else:
+
+                logger.warning(
+                    "Incorrect parent password entered."
+                )
+
+                error_label.config(
+                    text="Incorrect password."
+                )
+
+                password_entry.delete(
+                    0,
+                    tk.END,
+                )
+
+                password_entry.focus_set()
+
+        ok_button = tk.Button(
+            password_window,
+            text="OK",
+            font=(
+                "Segoe UI",
+                10,
+                "bold",
+            ),
+            width=10,
+            command=check_password,
+        )
+
+        ok_button.pack(
+            pady=(0, 15)
+        )
+
+        password_entry.bind(
+            "<Return>",
+            lambda event: check_password(),
+        )
+
+        password_entry.focus_set()
+
+        password_timeout_seconds = 60
+
+        password_timeout_job = (
+            password_window.after(
+                1000,
+                update_password_timeout,
+            )
+        )
+
+    # --------------------------------------------------
+    # Main timer
+    # --------------------------------------------------
+
+    def update_timer():
+
+        nonlocal remaining_seconds
+        nonlocal seconds_since_save
+        nonlocal was_inactive
+
+        # Проверяем новый день
+        today = date.today().isoformat()
+
+        if usage["date"] != today:
+
+            logger.info(
+                "Midnight reached. "
+                "Resetting daily usage "
+                "from %s seconds.",
+                usage["used_seconds"],
+            )
+
+            usage["date"] = today
+
+            usage["used_seconds"] = 0
+
+            remaining_seconds = (
+                limit_seconds
+            )
+
+            seconds_since_save = 0
+
+            save_usage(
+                usage
+            )
+
+            logger.info(
+                "Daily limit reset. "
+                "New remaining time: %s seconds.",
+                remaining_seconds,
+            )
+
+        # --------------------------------------------------
+        # Check inactivity
+        # --------------------------------------------------
+
+        with activity_lock:
+
+            inactive_seconds = (
+                time.monotonic()
+                - last_activity_time
+            )
+
+        is_inactive = (
+            inactive_seconds
+            >= INACTIVITY_TIMEOUT
+        )
+
+        if is_inactive:
+
+            if not was_inactive:
+
+                logger.info(
+                    "User inactive for %s seconds. "
+                    "Timer paused.",
+                    INACTIVITY_TIMEOUT,
+                )
+
+                was_inactive = True
+
+            # Показываем голубой цвет
+            # во время паузы.
+            timer_label.config(
+                fg="#00BFFF"
+            )
+
+            # Время НЕ списываем.
+            root.after(
+                1000,
+                update_timer,
+            )
+
+            return
+
+        # --------------------------------------------------
+        # User active again
+        # --------------------------------------------------
+
+        if was_inactive:
+
+            logger.info(
+                "User activity detected. "
+                "Timer resumed."
+            )
+
+            was_inactive = False
+
+        # --------------------------------------------------
+        # Time limit reached
+        # --------------------------------------------------
+
+        if remaining_seconds <= 0:
+
+            timer_label.config(
+                text="00:00"
+            )
+
+            save_usage(
+                usage
+            )
+
+            seconds_since_save = 0
+
+            blink_timer()
+
+            show_password_window()
+
+            return
+
+        # --------------------------------------------------
+        # Update timer
+        # --------------------------------------------------
+
+        update_timer_color()
+
+        minutes = (
+            remaining_seconds // 60
+        )
+
+        seconds = (
+            remaining_seconds % 60
+        )
+
+        timer_label.config(
+            text=(
+                f"{minutes:02d}:{seconds:02d}"
+            )
+        )
+
+        # Списываем одну секунду
+        remaining_seconds -= 1
+
+        usage["used_seconds"] += 1
+
+        seconds_since_save += 1
+
+        # Сохраняем каждые 10 секунд
+        if (
+            seconds_since_save
+            >= USAGE_SAVE_INTERVAL
+        ):
+
+            save_usage(
+                usage
+            )
+
+            seconds_since_save = 0
+
+        root.after(
+            1000,
+            update_timer,
+        )
+
+    # --------------------------------------------------
+    # Start timer
+    # --------------------------------------------------
+
+    if settings["timer_enabled"]:
+
+        update_timer()
+
+    # --------------------------------------------------
+    # Main loop
+    # --------------------------------------------------
+
     try:
-        import psutil
-        current_pid = os.getpid()
-        process_name = os.path.basename(sys.argv[0])
 
-        for proc in psutil.process_iter(['pid', 'name']):
-            try:
-                if proc.info['pid'] != current_pid and proc.info['name'] == process_name:
-                    logger.warning("Программа уже запущена")
-                    sys.exit()
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
-    except ImportError:
-        logger.warning("psutil не установлен, проверка запущенных экземпляров пропущена")
+        root.mainloop()
 
-    # Запускаем основной режим
-    limiter = TimeLimiter()
-
-    try:
-        limiter.run()
-    except KeyboardInterrupt:
-        logger.info("Программа остановлена пользователем")
-    except Exception as e:
-        logger.error(f"Критическая ошибка: {e}")
     finally:
-        limiter.stop()
 
+        logger.info(
+            "Stopping keyboard and mouse listeners."
+        )
+
+        keyboard_listener.stop()
+        mouse_listener.stop()
+
+
+# --------------------------------------------------
+# Application entry point
+# --------------------------------------------------
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "--settings":
-            run_settings()
-        elif sys.argv[1] == "--version":
-            print("TimeLimiter v2.1")
-        elif sys.argv[1] == "--help":
-            print("""
-TimeLimiter - контроль времени работы на компьютере
 
-Использование:
-  python main.py                 - Запуск в режиме слежения
-  python main.py --settings      - Открыть настройки
-  python main.py --version       - Показать версию
-  python main.py --help          - Показать эту справку
-            """)
-        else:
-            print(f"Неизвестный аргумент: {sys.argv[1]}")
-    else:
+    try:
+
         main()
+
+    except Exception:
+
+        logger.exception(
+            "Fatal application error."
+        )
+
+        raise
